@@ -1,13 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { PlaylistProvider } from "@/context/PlaylistContext";
+import Header from "@/components/Header";
+import VideoPlayer from "@/components/VideoPlayer";
+import PlaylistSidebar from "@/components/PlaylistSidebar";
+import VideoList from "@/components/VideoList";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <PlaylistProvider>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex flex-col md:flex-row">
+          <PlaylistSidebar />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="p-4">
+              <VideoPlayer />
+            </div>
+            <VideoList />
+          </div>
+        </main>
       </div>
-    </div>
+    </PlaylistProvider>
   );
 };
 
