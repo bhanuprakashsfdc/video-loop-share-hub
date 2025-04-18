@@ -51,6 +51,9 @@ const Header = () => {
         </Link>
         
         <div className="flex items-center gap-4">
+          <Link to="/pricing">
+            <Button variant="ghost">Pricing</Button>
+          </Link>
           {user ? (
             <>
               <Dialog>

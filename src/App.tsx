@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import PlaylistView from "./pages/PlaylistView";
 import NotFound from "./pages/NotFound";
 import Explore from "./pages/Explore";
+import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/playlist/:playlistId" element={<PlaylistView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
