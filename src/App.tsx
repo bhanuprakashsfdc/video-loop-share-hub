@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PlaylistView from "./pages/PlaylistView";
 import NotFound from "./pages/NotFound";
+import Explore from "./pages/Explore";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/explore" element={<Explore />} />
             <Route path="/playlist/:playlistId" element={<PlaylistView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

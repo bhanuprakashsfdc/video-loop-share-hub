@@ -1,53 +1,126 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Playlist, Video, initialPlaylists } from "@/data/initialVideos";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { Video } from "@/data/initialVideos";
+
+interface Playlist {
+  id: string;
+  name: string;
+  user_id: string;
+  is_public: boolean;
+  videos: Video[];
+}
 
 interface PlaylistContextType {
   playlists: Playlist[];
   currentPlaylist: Playlist | null;
   currentVideoIndex: number;
-  addPlaylist: (name: string) => void;
+  addPlaylist: (name: string) => Promise<void>;
   addVideoToPlaylist: (playlistId: string, videoUrl: string, videoTitle: string) => void;
   removeVideoFromPlaylist: (playlistId: string, videoId: string) => void;
   setCurrentPlaylist: (playlistId: string) => void;
   setCurrentVideoIndex: (index: number) => void;
   getPlaylistById: (id: string) => Playlist | undefined;
+  togglePlaylistVisibility: (playlistId: string) => Promise<void>;
   extractVideoId: (url: string) => string;
 }
 
 const PlaylistContext = createContext<PlaylistContextType | undefined>(undefined);
 
-export const usePlaylist = () => {
-  const context = useContext(PlaylistContext);
-  if (!context) {
-    throw new Error("usePlaylist must be used within a PlaylistProvider");
-  }
-  return context;
-};
-
 export const PlaylistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [playlists, setPlaylists] = useState<Playlist[]>(initialPlaylists);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [currentPlaylist, setCurrentPlaylistState] = useState<Playlist | null>(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  // Extract YouTube video ID from URL
-  const extractVideoId = (url: string): string => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11 ? match[2] : "";
+  useEffect(() => {
+    if (user) {
+      fetchPlaylists();
+    }
+  }, [user]);
+
+  const fetchPlaylists = async () => {
+    const { data, error } = await supabase
+      .from('playlists')
+      .select(`
+        *,
+        playlist_videos (*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Error fetching playlists",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formattedPlaylists = data.map(playlist => ({
+      ...playlist,
+      videos: playlist.playlist_videos || []
+    }));
+
+    setPlaylists(formattedPlaylists);
   };
 
-  // Add a new playlist
-  const addPlaylist = (name: string) => {
-    const newPlaylist: Playlist = {
-      id: `playlist-${Date.now()}`,
-      name,
-      videos: []
-    };
-    setPlaylists([...playlists, newPlaylist]);
+  const addPlaylist = async (name: string) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('playlists')
+      .insert([{ name, user_id: user.id }])
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error creating playlist",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newPlaylist = { ...data, videos: [] };
+    setPlaylists([newPlaylist, ...playlists]);
+    toast({
+      title: "Playlist created",
+      description: `${name} has been created successfully.`
+    });
   };
 
-  // Add a video to a playlist
+  const togglePlaylistVisibility = async (playlistId: string) => {
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (!playlist) return;
+
+    const { error } = await supabase
+      .from('playlists')
+      .update({ is_public: !playlist.is_public })
+      .eq('id', playlistId);
+
+    if (error) {
+      toast({
+        title: "Error updating playlist visibility",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPlaylists(playlists.map(p => 
+      p.id === playlistId ? { ...p, is_public: !p.is_public } : p
+    ));
+
+    toast({
+      title: "Visibility updated",
+      description: `Playlist is now ${!playlist.is_public ? 'public' : 'private'}.`
+    });
+  };
+
   const addVideoToPlaylist = (playlistId: string, videoUrl: string, videoTitle: string) => {
     const videoId = extractVideoId(videoUrl);
     if (!videoId) return;
@@ -67,7 +140,6 @@ export const PlaylistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ));
   };
 
-  // Remove a video from a playlist
   const removeVideoFromPlaylist = (playlistId: string, videoId: string) => {
     setPlaylists(playlists.map(playlist => 
       playlist.id === playlistId 
@@ -76,24 +148,21 @@ export const PlaylistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ));
   };
 
-  // Set current playlist by ID
+  const extractVideoId = (url: string): string => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : "";
+  };
+
   const setCurrentPlaylist = (playlistId: string) => {
     const playlist = playlists.find(p => p.id === playlistId) || null;
     setCurrentPlaylistState(playlist);
     setCurrentVideoIndex(0);
   };
 
-  // Get playlist by ID
   const getPlaylistById = (id: string) => {
     return playlists.find(playlist => playlist.id === id);
   };
-
-  // Initialize with first playlist if available
-  useEffect(() => {
-    if (playlists.length > 0 && !currentPlaylist) {
-      setCurrentPlaylistState(playlists[0]);
-    }
-  }, [playlists, currentPlaylist]);
 
   const value = {
     playlists,
@@ -105,6 +174,7 @@ export const PlaylistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCurrentPlaylist,
     setCurrentVideoIndex,
     getPlaylistById,
+    togglePlaylistVisibility,
     extractVideoId
   };
 
@@ -113,4 +183,12 @@ export const PlaylistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {children}
     </PlaylistContext.Provider>
   );
+};
+
+export const usePlaylist = () => {
+  const context = useContext(PlaylistContext);
+  if (!context) {
+    throw new Error("usePlaylist must be used within a PlaylistProvider");
+  }
+  return context;
 };

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import PlaylistCard from "./PlaylistCard";
 
 const PlaylistSidebar = () => {
   const { playlists, currentPlaylist, setCurrentPlaylist, addVideoToPlaylist } = usePlaylist();
@@ -36,67 +37,14 @@ const PlaylistSidebar = () => {
       
       <div className="space-y-4">
         {playlists.map((playlist) => (
-          <Card 
-            key={playlist.id} 
-            className={`cursor-pointer transition-colors ${currentPlaylist?.id === playlist.id ? 'border-primary' : ''}`}
-            onClick={() => setCurrentPlaylist(playlist.id)}
-          >
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-lg">{playlist.name}</CardTitle>
-              <CardDescription>{playlist.videos.length} videos</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  {playlist.videos.length > 0 
-                    ? `Latest: ${playlist.videos[playlist.videos.length - 1].title.substring(0, 20)}${playlist.videos[playlist.videos.length - 1].title.length > 20 ? '...' : ''}`
-                    : 'No videos yet'}
-                </span>
-                
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAddingToPlaylistId(playlist.id);
-                      }}
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent onClick={(e) => e.stopPropagation()}>
-                    <DialogHeader>
-                      <DialogTitle>Add Video to {playlist.name}</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="video-url">YouTube Video URL</Label>
-                        <Input 
-                          id="video-url" 
-                          placeholder="https://www.youtube.com/watch?v=..." 
-                          value={newVideoUrl}
-                          onChange={(e) => setNewVideoUrl(e.target.value)}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="video-title">Video Title (Optional)</Label>
-                        <Input 
-                          id="video-title" 
-                          placeholder="Enter video title" 
-                          value={newVideoTitle}
-                          onChange={(e) => setNewVideoTitle(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <Button onClick={handleAddVideo}>Add Video</Button>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
+          <PlaylistCard
+            key={playlist.id}
+            id={playlist.id}
+            name={playlist.name}
+            videoCount={playlist.videos.length}
+            isPublic={playlist.is_public}
+            userId={playlist.user_id}
+          />
         ))}
       </div>
     </div>
