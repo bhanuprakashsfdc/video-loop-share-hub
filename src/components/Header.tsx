@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Share2, Video, LogIn, User } from "lucide-react";
+import { PlusCircle, Share2, Video, LogIn, User, Settings } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -156,8 +156,14 @@ const Header = () => {
                     )}
                   </div>
                   <DropdownMenuItem asChild>
+                    <Link to="/subscription" className="cursor-pointer flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Manage Subscription
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/pricing" className="cursor-pointer">
-                      {subscriptionInfo?.subscribed ? 'Manage Subscription' : 'Upgrade Plan'}
+                      {subscriptionInfo?.subscribed ? 'Change Plan' : 'Upgrade Plan'}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-500">

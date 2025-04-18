@@ -1,38 +1,38 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Routes, Route } from "react-router-dom";
+import Index from "@/pages/Index";
+import Pricing from "@/pages/Pricing";
+import Explore from "@/pages/Explore";
+import Auth from "@/pages/Auth";
+import PlaylistView from "@/pages/PlaylistView";
+import NotFound from "@/pages/NotFound";
+import SubscriptionManagement from "@/pages/SubscriptionManagement";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/AuthContext";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import PlaylistView from "./pages/PlaylistView";
-import NotFound from "./pages/NotFound";
-import Explore from "./pages/Explore";
-import Pricing from "./pages/Pricing";
+
+import "./App.css";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/playlist/:id" element={<PlaylistView />} />
+          <Route path="/subscription" element={<SubscriptionManagement />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
         <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/playlist/:playlistId" element={<PlaylistView />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
