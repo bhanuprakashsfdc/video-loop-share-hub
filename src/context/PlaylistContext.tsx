@@ -17,8 +17,8 @@ interface PlaylistContextType {
   currentPlaylist: Playlist | null;
   currentVideoIndex: number;
   addPlaylist: (name: string) => Promise<void>;
-  addVideoToPlaylist: (playlistId: string, videoUrl: string, videoTitle: string) => void;
-  removeVideoFromPlaylist: (playlistId: string, videoId: string) => void;
+  addVideoToPlaylist: (playlistId: string, videoUrl: string, videoTitle: string) => Promise<void>;
+  removeVideoFromPlaylist: (playlistId: string, videoId: string) => Promise<void>;
   setCurrentPlaylist: (playlistId: string) => void;
   setCurrentVideoIndex: (index: number) => void;
   getPlaylistById: (id: string) => Playlist | undefined;
@@ -121,16 +121,48 @@ export const PlaylistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const addVideoToPlaylist = (playlistId: string, videoUrl: string, videoTitle: string) => {
+  const addVideoToPlaylist = async (playlistId: string, videoUrl: string, videoTitle: string) => {
     const videoId = extractVideoId(videoUrl);
     if (!videoId) return;
 
     const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    
+    const { data: positionData } = await supabase
+      .from('playlist_videos')
+      .select('position')
+      .eq('playlist_id', playlistId)
+      .order('position', { ascending: false })
+      .limit(1);
+    
+    const newPosition = positionData && positionData.length > 0 ? positionData[0].position + 1 : 0;
+    
+    const { data, error } = await supabase
+      .from('playlist_videos')
+      .insert([{ 
+        playlist_id: playlistId,
+        title: videoTitle || "Untitled Video",
+        url: embedUrl,
+        thumbnail: thumbnailUrl,
+        position: newPosition
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error adding video",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newVideo: Video = {
-      id: `video-${Date.now()}`,
+      id: data.id,
       url: embedUrl,
       title: videoTitle || "Untitled Video",
-      thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+      thumbnail: thumbnailUrl
     };
 
     setPlaylists(playlists.map(playlist => 
@@ -138,14 +170,52 @@ export const PlaylistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ? { ...playlist, videos: [...playlist.videos, newVideo] }
         : playlist
     ));
+
+    if (currentPlaylist && currentPlaylist.id === playlistId) {
+      setCurrentPlaylistState({
+        ...currentPlaylist,
+        videos: [...currentPlaylist.videos, newVideo]
+      });
+    }
+
+    toast({
+      title: "Video added",
+      description: "Video has been added to the playlist"
+    });
   };
 
-  const removeVideoFromPlaylist = (playlistId: string, videoId: string) => {
+  const removeVideoFromPlaylist = async (playlistId: string, videoId: string) => {
+    const { error } = await supabase
+      .from('playlist_videos')
+      .delete()
+      .eq('id', videoId);
+
+    if (error) {
+      toast({
+        title: "Error removing video",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setPlaylists(playlists.map(playlist => 
       playlist.id === playlistId 
         ? { ...playlist, videos: playlist.videos.filter(video => video.id !== videoId) }
         : playlist
     ));
+
+    if (currentPlaylist && currentPlaylist.id === playlistId) {
+      setCurrentPlaylistState({
+        ...currentPlaylist,
+        videos: currentPlaylist.videos.filter(video => video.id !== videoId)
+      });
+    }
+
+    toast({
+      title: "Video removed",
+      description: "Video has been removed from the playlist"
+    });
   };
 
   const extractVideoId = (url: string): string => {
