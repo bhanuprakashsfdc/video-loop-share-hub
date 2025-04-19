@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useEffect } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const pricingPlans = [
   {
@@ -59,6 +60,7 @@ const Pricing = () => {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Check if this is a success redirect from Stripe checkout
   useEffect(() => {
@@ -86,6 +88,7 @@ const Pricing = () => {
       
       try {
         setLoading(true);
+        setError(null);
         const { data, error } = await supabase.functions.invoke("check-subscription");
         if (error) throw error;
         
@@ -94,6 +97,7 @@ const Pricing = () => {
         }
       } catch (error) {
         console.error("Error fetching subscription:", error);
+        setError("Failed to load subscription information. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -109,12 +113,17 @@ const Pricing = () => {
     }
 
     try {
+      setError(null);
       setProcessingPlanId(priceId);
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Function error:", error);
+        throw new Error("Failed to start checkout process");
+      }
+      
       if (data?.url) {
         console.log("Redirecting to checkout URL:", data.url);
         window.location.href = data.url;
@@ -123,6 +132,7 @@ const Pricing = () => {
       }
     } catch (error) {
       console.error("Subscription error:", error);
+      setError(error instanceof Error ? error.message : "Failed to start subscription process");
       toast({
         title: "Error",
         description: "Failed to start subscription process. Please try again.",
@@ -142,6 +152,14 @@ const Pricing = () => {
           <p className="text-lg text-muted-foreground mb-6">
             Select the perfect plan for your needs
           </p>
+          
+          {error && (
+            <Alert variant="destructive" className="mb-6 max-w-2xl mx-auto">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="bg-blue-50 border border-blue-100 rounded-md p-4 max-w-2xl mx-auto">
             <h3 className="font-medium text-blue-800 flex items-center">
               <Info className="h-5 w-5 mr-2" /> 
@@ -184,42 +202,33 @@ const Pricing = () => {
                 </ul>
               </CardContent>
               <CardFooter>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="w-full">
-                      <Button
-                        className="w-full"
-                        disabled={loading || currentPlan === plan.name || processingPlanId !== null}
-                        onClick={() => handleSubscribe(plan.priceId)}
-                      >
-                        {processingPlanId === plan.priceId ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
-                          </>
-                        ) : currentPlan === plan.name ? (
-                          'Current Plan'
-                        ) : user ? (
-                          'Subscribe Now'
-                        ) : (
-                          'Sign In to Subscribe'
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    {currentPlan === plan.name && (
-                      <TooltipContent>
-                        <p>This is your current plan. Visit subscription management to make changes.</p>
-                      </TooltipContent>
+                <div className="w-full">
+                  <Button
+                    className="w-full"
+                    disabled={loading || currentPlan === plan.name || processingPlanId !== null}
+                    onClick={() => handleSubscribe(plan.priceId)}
+                  >
+                    {processingPlanId === plan.priceId ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : currentPlan === plan.name ? (
+                      'Current Plan'
+                    ) : user ? (
+                      'Subscribe Now'
+                    ) : (
+                      'Sign In to Subscribe'
                     )}
-                  </Tooltip>
-                </TooltipProvider>
+                  </Button>
                 
-                {plan.name !== "Individual" && (
-                  <div className="mt-3 text-xs text-center text-muted-foreground flex justify-center items-center">
-                    <HelpCircle className="h-3 w-3 mr-1" />
-                    <span>Need a custom quote? <a href="#" className="underline">Contact sales</a></span>
-                  </div>
-                )}
+                  {plan.name !== "Individual" && (
+                    <div className="mt-3 text-xs text-center text-muted-foreground flex justify-center items-center">
+                      <HelpCircle className="h-3 w-3 mr-1" />
+                      <span>Need a custom quote? <a href="#" className="underline">Contact sales</a></span>
+                    </div>
+                  )}
+                </div>
               </CardFooter>
             </Card>
           ))}

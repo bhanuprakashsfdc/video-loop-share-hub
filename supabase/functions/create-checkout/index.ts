@@ -59,23 +59,33 @@ serve(async (req) => {
     }
     console.log("Tier identified:", tierName);
 
-    // Map symbolic price IDs to actual Stripe price IDs
-    const priceMap: Record<string, string> = {
-      "price_individual": "price_1PJQogLfcjbIlvYF4Jl0xABl",  // Replace with actual Stripe price ID
-      "price_business": "price_1PJQohLfcjbIlvYF4kHnCnZT",    // Replace with actual Stripe price ID
-      "price_enterprise": "price_1PJQoiLfcjbIlvYFG26MInKX"   // Replace with actual Stripe price ID
-    };
-
-    const actualPriceId = priceMap[priceId];
-    if (!actualPriceId) {
-      throw new Error(`Invalid price ID: ${priceId}`);
+    // Create a dynamic price based on the tier
+    let amount = 1200; // $12 for Individual tier
+    if (tierName === "Business") {
+      amount = 2000; // $20 for Business tier
+    } else if (tierName === "Enterprise") {
+      amount = 4000; // $40 for Enterprise tier
     }
+
+    // Create a temporary price (you can create permanent prices in your Stripe dashboard later)
+    console.log("Creating price with amount:", amount);
+    const price = await stripe.prices.create({
+      unit_amount: amount,
+      currency: 'usd',
+      recurring: { interval: 'month' },
+      product_data: {
+        name: `${tierName} Plan`,
+        description: `${tierName} tier subscription`,
+      },
+    });
     
-    console.log("Creating checkout session with price:", actualPriceId);
+    console.log("Price created successfully:", price.id);
+    
+    console.log("Creating checkout session with price:", price.id);
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: actualPriceId, quantity: 1 }],
+      line_items: [{ price: price.id, quantity: 1 }],
       mode: "subscription",
       success_url: `${req.headers.get("origin")}/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/pricing`,
