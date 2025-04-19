@@ -32,6 +32,14 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
+      // Create a subscribers record for a non-subscribed user
+      await supabaseClient.from("subscribers").upsert({
+        user_id: user.id,
+        email: user.email,
+        subscribed: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+      
       return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -46,15 +54,24 @@ serve(async (req) => {
     const hasActiveSub = subscriptions.data.length > 0;
     let subscriptionTier = null;
     let subscriptionEnd = null;
+    let currentPeriodStart = null;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
+      
+      // Get price details to determine tier
       const priceId = subscription.items.data[0].price.id;
       const price = await stripe.prices.retrieve(priceId);
-      subscriptionTier = price.nickname || 'premium';
+      
+      // Use nickname or metadata to determine tier
+      subscriptionTier = price.nickname || 
+                         subscription.metadata.tier_name ||
+                         'Unknown';
     }
 
+    // Update subscribers table with latest info
     await supabaseClient.from("subscribers").upsert({
       user_id: user.id,
       email: user.email,
@@ -62,13 +79,15 @@ serve(async (req) => {
       subscribed: hasActiveSub,
       subscription_tier: subscriptionTier,
       subscription_end: subscriptionEnd,
+      current_period_start: currentPeriodStart,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'email' });
+    }, { onConflict: 'user_id' });
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       subscription_tier: subscriptionTier,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      current_period_start: currentPeriodStart
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

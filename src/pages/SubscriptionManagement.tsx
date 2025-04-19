@@ -1,29 +1,70 @@
 
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle, PauseCircle, ArrowLeftCircle } from "lucide-react";
+import { Loader2, CheckCircle, PauseCircle, ArrowLeftCircle, RefreshCw } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type SubscriptionInfo = {
   subscribed: boolean;
   subscription_tier: string | null;
   subscription_end: string | null;
+  current_period_start?: string | null;
   pause_until?: string | null;
 };
 
 const SubscriptionManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
+
+  // Function to fetch subscription info
+  const fetchSubscriptionInfo = async () => {
+    if (!user) return;
+    
+    try {
+      setRefreshing(true);
+      const { data, error } = await supabase.functions.invoke("check-subscription");
+      if (error) throw error;
+      setSubscriptionInfo(data);
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load subscription information.",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
+  };
+  
+  // Check for success URL params when coming from checkout
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const isSuccess = searchParams.get('success') === 'true';
+    
+    if (isSuccess && user) {
+      toast({
+        title: "Subscription Updated",
+        description: "Your subscription changes have been processed successfully.",
+      });
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [location, user, toast]);
 
   useEffect(() => {
     if (!user) {
@@ -31,26 +72,15 @@ const SubscriptionManagement = () => {
       return;
     }
 
-    const fetchSubscriptionInfo = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase.functions.invoke("check-subscription");
-        if (error) throw error;
-        setSubscriptionInfo(data);
-      } catch (error) {
-        console.error("Error fetching subscription:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load subscription information.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSubscriptionInfo();
-  }, [user, navigate, toast]);
+    
+    // Set up periodic refresh (every 10 seconds)
+    const refreshInterval = setInterval(() => {
+      if (user) fetchSubscriptionInfo();
+    }, 10000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [user, navigate]);
 
   const handleManageSubscription = async () => {
     try {
@@ -87,8 +117,7 @@ const SubscriptionManagement = () => {
       });
       
       // Refresh subscription info
-      const { data: updatedData } = await supabase.functions.invoke("check-subscription");
-      setSubscriptionInfo(updatedData);
+      await fetchSubscriptionInfo();
     } catch (error) {
       toast({
         title: "Error",
@@ -103,8 +132,6 @@ const SubscriptionManagement = () => {
   const handleDowngrade = async () => {
     try {
       setProcessingAction(true);
-      // This would typically call a function to handle downgrading
-      // For now, we'll just redirect to customer portal
       const { data, error } = await supabase.functions.invoke("customer-portal", {
         body: { action: "downgrade" }
       });
@@ -122,6 +149,15 @@ const SubscriptionManagement = () => {
     } finally {
       setProcessingAction(false);
     }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Not available";
+    return new Date(dateString).toLocaleDateString(undefined, {
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric'
+    });
   };
 
   if (loading) {
@@ -143,12 +179,24 @@ const SubscriptionManagement = () => {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center mb-6">
-            <Button variant="ghost" onClick={() => navigate(-1)} className="mr-4">
-              <ArrowLeftCircle className="mr-2 h-4 w-4" />
-              Back
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <Button variant="ghost" onClick={() => navigate(-1)} className="mr-4">
+                <ArrowLeftCircle className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <h1 className="text-3xl font-bold">Manage Your Subscription</h1>
+            </div>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => fetchSubscriptionInfo()} 
+              disabled={refreshing}
+              className="ml-auto"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </Button>
-            <h1 className="text-3xl font-bold">Manage Your Subscription</h1>
           </div>
 
           {subscriptionInfo?.subscribed ? (

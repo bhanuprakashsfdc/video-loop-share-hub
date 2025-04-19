@@ -1,5 +1,5 @@
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Check, HelpCircle, Info } from "lucide-react";
@@ -54,9 +54,30 @@ const pricingPlans = [
 const Pricing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Check if this is a success redirect from Stripe checkout
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const isSuccess = searchParams.get('success') === 'true';
+    const sessionId = searchParams.get('session_id');
+    
+    if (isSuccess && sessionId && user) {
+      toast({
+        title: "Payment successful!",
+        description: "Your subscription has been activated.",
+      });
+      
+      // Clear the URL query parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Redirect to subscription management page
+      navigate('/subscription');
+    }
+  }, [location, user, navigate, toast]);
 
   useEffect(() => {
     const fetchSubscriptionInfo = async () => {

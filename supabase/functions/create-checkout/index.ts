@@ -35,13 +35,33 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    // Determine price tier name for metadata
+    let tierName = "Unknown";
+    if (priceId === "price_individual") {
+      tierName = "Individual";
+    } else if (priceId === "price_business") {
+      tierName = "Business";
+    } else if (priceId === "price_enterprise") {
+      tierName = "Enterprise";
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/`,
+      success_url: `${req.headers.get("origin")}/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/pricing`,
+      metadata: {
+        user_id: user.id,
+        tier_name: tierName
+      },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          tier_name: tierName
+        }
+      }
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
