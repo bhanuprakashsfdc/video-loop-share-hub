@@ -2,7 +2,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Check, HelpCircle, Info } from "lucide-react";
+import { Check, HelpCircle, Info, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +58,7 @@ const Pricing = () => {
   const { toast } = useToast();
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
 
   // Check if this is a success redirect from Stripe checkout
   useEffect(() => {
@@ -84,12 +85,17 @@ const Pricing = () => {
       if (!user) return;
       
       try {
-        const { data } = await supabase.functions.invoke("check-subscription");
+        setLoading(true);
+        const { data, error } = await supabase.functions.invoke("check-subscription");
+        if (error) throw error;
+        
         if (data?.subscribed && data?.subscription_tier) {
           setCurrentPlan(data.subscription_tier);
         }
       } catch (error) {
         console.error("Error fetching subscription:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -103,23 +109,27 @@ const Pricing = () => {
     }
 
     try {
-      setLoading(true);
+      setProcessingPlanId(priceId);
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
       });
 
       if (error) throw error;
       if (data?.url) {
+        console.log("Redirecting to checkout URL:", data.url);
         window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
       }
     } catch (error) {
+      console.error("Subscription error:", error);
       toast({
         title: "Error",
         description: "Failed to start subscription process. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setProcessingPlanId(null);
     }
   };
 
@@ -179,10 +189,21 @@ const Pricing = () => {
                     <TooltipTrigger className="w-full">
                       <Button
                         className="w-full"
-                        disabled={loading || currentPlan === plan.name}
+                        disabled={loading || currentPlan === plan.name || processingPlanId !== null}
                         onClick={() => handleSubscribe(plan.priceId)}
                       >
-                        {currentPlan === plan.name ? 'Current Plan' : user ? 'Subscribe Now' : 'Sign In to Subscribe'}
+                        {processingPlanId === plan.priceId ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : currentPlan === plan.name ? (
+                          'Current Plan'
+                        ) : user ? (
+                          'Subscribe Now'
+                        ) : (
+                          'Sign In to Subscribe'
+                        )}
                       </Button>
                     </TooltipTrigger>
                     {currentPlan === plan.name && (
