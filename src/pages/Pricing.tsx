@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -13,6 +12,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const pricingPlans = [
   {
+    name: "Lifetime Free",
+    price: "$0",
+    description: "Free forever plan",
+    features: [
+      "Basic features",
+      "Community support",
+      "Limited storage",
+      "Standard access"
+    ],
+    priceId: "price_lifetime",
+    popular: false,
+    isLifetime: true
+  },
+  {
     name: "Individual",
     price: "$12",
     description: "Perfect for personal use",
@@ -22,7 +35,8 @@ const pricingPlans = [
       "Standard support",
       "Access to public playlists"
     ],
-    priceId: "price_individual"
+    priceId: "price_individual",
+    popular: true
   },
   {
     name: "Business",
@@ -159,6 +173,16 @@ const Pricing = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
+          {currentPlan && (
+            <Alert className="mb-6 max-w-2xl mx-auto bg-green-50 border-green-200">
+              <Info className="h-5 w-5 text-green-500" />
+              <AlertTitle className="text-green-800">Current Plan: {currentPlan}</AlertTitle>
+              <AlertDescription className="text-green-700">
+                You are currently subscribed to the {currentPlan} plan.
+              </AlertDescription>
+            </Alert>
+          )}
           
           <div className="bg-blue-50 border border-blue-100 rounded-md p-4 max-w-2xl mx-auto">
             <h3 className="font-medium text-blue-800 flex items-center">
@@ -172,11 +196,11 @@ const Pricing = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
           {pricingPlans.map((plan) => (
             <Card 
               key={plan.name} 
-              className={`flex flex-col ${currentPlan === plan.name ? 'border-green-500 border-2' : ''}`}
+              className={`flex flex-col ${currentPlan === plan.name ? 'border-green-500 border-2' : ''} ${plan.popular ? 'ring-2 ring-purple-500' : ''}`}
             >
               <CardHeader>
                 {currentPlan === plan.name && (
@@ -184,15 +208,20 @@ const Pricing = () => {
                     Your Current Plan
                   </div>
                 )}
+                {plan.popular && (
+                  <div className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full w-fit mb-2">
+                    Most Popular
+                  </div>
+                )}
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
                 <p className="text-3xl font-bold mt-4">
                   {plan.price}
-                  <span className="text-lg font-normal text-muted-foreground">/month</span>
+                  {!plan.isLifetime && <span className="text-lg font-normal text-muted-foreground">/month</span>}
                 </p>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <ul className="space-y-3 mb-8 flex-1">
+              <CardContent className="flex-1">
+                <ul className="space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-2" />
@@ -202,38 +231,30 @@ const Pricing = () => {
                 </ul>
               </CardContent>
               <CardFooter>
-                <div className="w-full">
-                  <Button
-                    className="w-full"
-                    disabled={loading || currentPlan === plan.name || processingPlanId !== null}
-                    onClick={() => handleSubscribe(plan.priceId)}
-                  >
-                    {processingPlanId === plan.priceId ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : currentPlan === plan.name ? (
-                      'Current Plan'
-                    ) : user ? (
-                      'Subscribe Now'
-                    ) : (
-                      'Sign In to Subscribe'
-                    )}
-                  </Button>
-                
-                  {plan.name !== "Individual" && (
-                    <div className="mt-3 text-xs text-center text-muted-foreground flex justify-center items-center">
-                      <HelpCircle className="h-3 w-3 mr-1" />
-                      <span>Need a custom quote? <a href="#" className="underline">Contact sales</a></span>
-                    </div>
+                <Button
+                  className="w-full"
+                  variant={plan.popular ? "default" : "outline"}
+                  disabled={loading || currentPlan === plan.name || processingPlanId !== null}
+                  onClick={() => handleSubscribe(plan.priceId)}
+                >
+                  {processingPlanId === plan.priceId ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : currentPlan === plan.name ? (
+                    'Current Plan'
+                  ) : (
+                    <>
+                      {plan.isLifetime ? 'Get Free Access' : 'Subscribe Now'}
+                    </>
                   )}
-                </div>
+                </Button>
               </CardFooter>
             </Card>
           ))}
         </div>
-        
+
         <div className="mt-12 max-w-2xl mx-auto text-center">
           <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
           
