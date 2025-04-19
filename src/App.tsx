@@ -11,6 +11,7 @@ import SubscriptionManagement from "@/pages/SubscriptionManagement";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/AuthContext";
+import { PlaylistProvider } from "@/context/PlaylistContext";
 
 import "./App.css";
 
@@ -20,16 +21,18 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/explore" element={<Explore />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/playlist/:id" element={<PlaylistView />} />
-          <Route path="/subscription" element={<SubscriptionManagement />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
+        <PlaylistProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/playlist/:id" element={<PlaylistView />} />
+            <Route path="/subscription" element={<SubscriptionManagement />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
+        </PlaylistProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
