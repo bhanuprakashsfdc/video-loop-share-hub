@@ -1,3 +1,4 @@
+
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -129,6 +130,7 @@ const Pricing = () => {
     try {
       setError(null);
       setProcessingPlanId(priceId);
+      
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
       });

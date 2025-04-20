@@ -8,11 +8,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Map price identifiers to actual Stripe price IDs
 const PRICE_MAPPING = {
-  "price_individual": "prod_S9jFdsXJ06hMqD",
-  "price_business": "prod_S9jGXrXV9TBMYr",
-  "price_enterprise": "prod_S9jGQh7Dr41asG",
-  "price_lifetime": "prod_S9jGiWTCXhr29P"
+  "price_individual": "price_1PWvgHCaQ9UR8KhT8p95MdlD", // Replace with actual Stripe price ID
+  "price_business": "price_1PWvgcCaQ9UR8KhTrT3I1POv", // Replace with actual Stripe price ID
+  "price_enterprise": "price_1PWvh0CaQ9UR8KhTf8CZGdyb", // Replace with actual Stripe price ID 
+  "price_lifetime": "price_1PWvhHCaQ9UR8KhT9NLSdEkW" // Replace with actual Stripe price ID
 };
 
 serve(async (req) => {
@@ -66,15 +67,17 @@ serve(async (req) => {
     }
     console.log("Tier identified:", tierName);
 
-    const stripeProductId = PRICE_MAPPING[priceId];
-    if (!stripeProductId) throw new Error("Invalid price ID");
+    // Get the actual Stripe price ID from our mapping
+    const stripePriceId = PRICE_MAPPING[priceId];
+    if (!stripePriceId) throw new Error(`Invalid price ID: ${priceId}`);
+    console.log("Using Stripe price ID:", stripePriceId);
 
     console.log("Creating checkout session");
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ 
-        price: stripeProductId,
+        price: stripePriceId,
         quantity: 1 
       }],
       mode: tierName === "Lifetime" ? "payment" : "subscription",
